@@ -12,7 +12,8 @@
 
   var S = {
     state: null,      // サーバーから来た今の状況
-    view: '',         // '' ＝状況どおり／'new' ＝募集フォーム／'roulette'
+    view: '',         // '' ＝状況どおり／'new' ＝募集フォーム／'roulette'／'history' ＝これまでの社長めし
+    history: null,    // これまでの社長めし（開いたときに読み込む）
     error: '',
     roulette: null,   // { steps, i, phase: 'ready'|'spinning'|'done', rot }
     draft: null       // 募集フォームの入力途中
@@ -136,10 +137,11 @@
     var st = S.state;
     var logged = !!store('sm_key');
     $reload.hidden = !logged || S.view === 'roulette';
-    $subtitle.textContent = st && st.round && S.view !== 'new' && !(st.stage === 'drawn' && st.ended) ? st.round.id + 'の回' : '社長とスタッフの食事会';
+    $subtitle.textContent = st && st.round && S.view !== 'new' && S.view !== 'history' && !(st.stage === 'drawn' && st.ended) ? st.round.id + 'の回' : '社長とスタッフの食事会';
 
     if (!logged) return renderLogin();
     if (S.view === 'roulette') return renderRoulette();
+    if (S.view === 'history') return renderHistory();
     if (!st) {
       $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div>';
       on('#retry', load);
@@ -598,6 +600,61 @@
     });
   }
 
+  // ───────── これまでの社長めし ─────────
+
+  function renderHistory() {
+    var back = '<button class="btn ghost small" id="h-back" style="margin-top:0">もどる</button>';
+    if (!S.history) {
+      $app.innerHTML = back + (S.error ? errBox() : '<div class="spinner"></div>');
+      on('#h-back', leaveHistory);
+      if (!S.error) {
+        api('history').then(function (h) { S.history = h; render(); }, function (e) { S.error = e.message; render(); });
+      }
+      return;
+    }
+    var rounds = S.history.rounds;
+    var items = rounds.map(function (r, i) {
+      var members = r.members.length
+        ? r.members.map(function (m) {
+          var tag = m.promoted ? ' <span class="pill gold">繰り上げ</span>' : '';
+          if (m.absent) tag += ' <span class="pill gray">欠席</span>';
+          return '<div class="member"><div class="avatar maru">' + esc(initial(m.name)) + '</div>' +
+            '<div class="who"><div class="nm">' + esc(m.name) + 'さん' + tag + '</div></div></div>';
+        }).join('')
+        : '<p class="muted" style="margin:6px 0 0">当選者はいません</p>';
+      return '<details class="month"' + (i === 0 ? ' open' : '') + '>' +
+        '<summary><span class="m-id maru">' + esc(r.id) + '</span>' +
+        '<span class="m-shop">' + esc(r.shop) + '</span>' +
+        (r.upcoming ? '<span class="pill">これから</span>' : '') +
+        '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+        '</summary>' +
+        '<div class="m-body">' +
+        '<div class="info">' + ICON.cal + '<div>' + esc(r.date) + '〜</div>' +
+        ICON.shop + '<div>' + esc(r.shop) + (r.genre ? '<span class="muted">（' + esc(r.genre) + '）</span>' : '') +
+        (r.url ? ' <a href="' + esc(r.url) + '" target="_blank" rel="noopener">お店のページ</a>' : '') + '</div></div>' +
+        '<p class="subhead" style="margin:14px 0 0">メンバー（応募 ' + (r.applicants || 0) + '名から）</p>' + members +
+        '</div></details>';
+    }).join('');
+    $app.innerHTML = back +
+      '<h2 class="maru" style="font-size:22px;margin:18px 0 4px">これまでの社長めし</h2>' +
+      '<p class="muted" style="margin:0 0 14px">' + (rounds.length ? rounds.length + '回 開催・新しい順' : 'まだ開催した回はありません') + '</p>' +
+      items +
+      (rounds.length > 1 ? '<button class="link" id="h-toggle">すべて開く</button>' : '');
+    on('#h-back', leaveHistory);
+    on('#h-toggle', function () {
+      var all = $app.querySelectorAll('details.month');
+      var open = !Array.prototype.every.call(all, function (d) { return d.open; });
+      Array.prototype.forEach.call(all, function (d) { d.open = open; });
+      $('#h-toggle').textContent = open ? 'すべて閉じる' : 'すべて開く';
+    });
+  }
+
+  function leaveHistory() {
+    S.view = ''; S.error = '';
+    window.scrollTo(0, 0);
+    render();
+  }
+
   // ───────── ダイアログ ─────────
 
   function modal(html) {
@@ -640,9 +697,11 @@
   }
 
   function footer() {
-    return '<button class="link" id="logout" style="font-size:12px;margin-top:28px">この端末の合言葉を消す</button>';
+    return '<button class="btn ghost" id="to-history" style="margin-top:28px">' + ICON.cal + 'これまでの社長めし</button>' +
+      '<button class="link" id="logout" style="font-size:12px;margin-top:20px">この端末の合言葉を消す</button>';
   }
   function bindFooter() {
+    on('#to-history', function () { S.view = 'history'; S.history = null; S.error = ''; window.scrollTo(0, 0); render(); });
     on('#logout', function () {
       confirmBox({
         title: 'この端末の合言葉を消しますか？', body: '次に開いたとき、もう一度合言葉を入れることになります。', ok: '消す',
@@ -653,7 +712,10 @@
 
   // ───────── はじまり ─────────
 
-  $reload.addEventListener('click', function () { if (S.view !== 'roulette') load(); });
+  $reload.addEventListener('click', function () {
+    if (S.view === 'history') { S.history = null; S.error = ''; render(); return; }
+    if (S.view !== 'roulette') load();
+  });
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible' && S.view !== 'roulette' && S.view !== 'new' && !document.querySelector('.modal')) load();
   });

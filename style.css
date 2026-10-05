@@ -137,3 +137,17 @@ select:focus, textarea:focus { outline: none; border-color: var(--green-2); box-
 .ask-box { background: var(--bg); border-radius: 12px; padding: 12px 14px; font-size: 15px; text-align: left; margin-top: 12px; white-space: pre-wrap; }
 .ask-box b { display: block; font-size: 12px; color: var(--sub); font-weight: 600; margin-bottom: 2px; }
 .btn.danger-ghost { background: transparent; color: var(--danger); border: 1.5px solid var(--danger); font-weight: 600; min-height: 50px; font-size: 16px; }
+
+/* これまでの社長めし（月ごとに畳める） */
+details.month { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+details.month summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; }
+details.month summary::-webkit-details-marker { display: none; }
+details.month .m-id { font-size: 16px; color: var(--green); flex: none; }
+details.month .m-shop { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+details.month .chev { width: 18px; height: 18px; color: var(--sub); flex: none; transition: transform .2s; }
+details.month[open] .chev { transform: rotate(180deg); }
+details.month[open] summary { border-bottom: 1px solid var(--line); }
+details.month .m-body { padding: 12px 16px 6px; }
+details.month .member { padding: 8px 0; }
+details.month .avatar { width: 36px; height: 36px; font-size: 14px; }
+details.month .nm { font-size: 16px; }
