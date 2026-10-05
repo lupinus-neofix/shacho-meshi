@@ -172,3 +172,7 @@ textarea.recruit-ed { min-height: 320px; font-size: 15px; line-height: 1.65; mar
 .see-btn svg { width: 18px; height: 18px; }
 .see-btn:active { background: var(--green-soft); }
 .sheet-list { max-height: 58vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 10px 0 6px; padding-right: 2px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+/* 読み込み中の仮の帯 */
+.skel { border-radius: 8px; background: linear-gradient(90deg, #ECEAE3 25%, #F6F4EE 50%, #ECEAE3 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
