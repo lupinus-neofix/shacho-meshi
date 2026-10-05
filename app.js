@@ -166,7 +166,7 @@
 
   function shareButtons(text, label) {
     return '<div class="btn-row">' +
-      '<a class="btn line" href="' + esc(lineUrl(text)) + '" target="_blank" rel="noopener">' + ICON.line + esc(label) + '</a>' +
+      '<a class="btn line" data-line href="' + esc(lineUrl(text)) + '" target="_blank" rel="noopener">' + ICON.line + esc(label) + '</a>' +
       '<button class="btn ghost" data-copy>' + ICON.copy + 'コピー</button>' +
       '</div>';
   }
@@ -277,7 +277,7 @@
           return api('start', { date: d.date, time: d.time, shop: d.shop, genre: d.genre, url: d.url, deadline: d.deadline }).then(function (st2) {
             S.state = st2; S.view = ''; S.draft = null; S.error = '';
             render();
-            shareBox('募集を始めました', 'LINEグループに募集のお知らせを送りましょう。', st2.recruitText, '募集をLINEで送る');
+            shareBox('募集を始めました', 'LINEグループに募集のお知らせを送りましょう。文面はここで書き直せます。', st2.recruitText, '募集をLINEで送る', true);
           });
         }
       });
@@ -297,12 +297,14 @@
       '</div>' +
       '<div class="card">' + infoRows(st.round) + '</div>' +
       shareButtons(st.recruitText, '募集をLINEで送る') +
-      '<details><summary>募集の文面を見る</summary><pre class="text">' + esc(st.recruitText) + '</pre></details>' +
+      '<details' + (st.recruitEdited ? ' open' : '') + '><summary>募集の文面を見る・書き直す' +
+      (st.recruitEdited ? ' <span class="pill gold">書き直し済み</span>' : '') + '</summary>' +
+      recruitEditorHtml(st.recruitText) + '</details>' +
       '<a class="link" href="apply/" target="_blank" rel="noopener">スタッフの応募ページを見る</a>' +
       '<button class="link" id="early">締切前だけど、もう抽選する</button>' +
       '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
       footer();
-    bindCopy(st.recruitText);
+    bindRecruitEditor($app);
     bindFooter();
     bindCancelRound();
     on('#early', function () {
@@ -340,6 +342,70 @@
       b.disabled = true; b.textContent = '準備しています…';
       startDraw(false).catch(function (e) { S.error = e.message; render(); });
     });
+  }
+
+  // ───────── 募集の文面の書き直し ─────────
+
+  function recruitEditorHtml(text) {
+    return '<textarea class="recruit-ed" aria-label="募集の文面">' + esc(text) + '</textarea>' +
+      '<div class="ed-row"><span class="ed-status">書き直すと自動で保存されます</span>' +
+      '<button class="mini ed-reset" hidden>元の文面に戻す</button></div>';
+  }
+
+  /**
+   * root の中の文面の欄を書き直せるようにする。止まって1秒・欄から離れたとき・LINE/コピーを押したときに保存。
+   * LINEで送る・コピーは、いま欄に入っている文面を使う。
+   */
+  function bindRecruitEditor(root) {
+    var ta = root.querySelector('.recruit-ed');
+    if (!ta) return;
+    var status = root.querySelector('.ed-status');
+    var reset = root.querySelector('.ed-reset');
+    var saved = ta.value, timer = null, pending = null;
+    var setStatus = function (t) { if (status) status.textContent = t; };
+    var showReset = function () { if (reset) reset.hidden = !(S.state && S.state.recruitEdited); };
+    var sync = function () {
+      Array.prototype.forEach.call(root.querySelectorAll('[data-line]'), function (a) { a.href = lineUrl(ta.value); });
+    };
+    var save = function () {
+      clearTimeout(timer); timer = null;
+      var text = ta.value;
+      if (text === saved) return pending || Promise.resolve();
+      setStatus('保存しています…');
+      pending = api('save_recruit', { text: text }).then(function (st) {
+        S.state = st; saved = text; pending = null;
+        setStatus(st.recruitEdited ? '書き直した文面を保存しました' : '元の文面と同じです');
+        showReset();
+      }, function (e) {
+        pending = null;
+        setStatus('保存できませんでした：' + e.message);
+      });
+      return pending;
+    };
+    ta.addEventListener('input', function () {
+      sync();
+      setStatus('入力中…');
+      clearTimeout(timer);
+      timer = setTimeout(save, 1000);
+    });
+    ta.addEventListener('blur', save);
+    Array.prototype.forEach.call(root.querySelectorAll('[data-line]'), function (a) { a.addEventListener('click', save); });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-copy]'), function (b) {
+      b.addEventListener('click', function () { copy(ta.value); save(); });
+    });
+    if (reset) reset.addEventListener('click', function () {
+      confirmBox({
+        title: '元の文面に戻しますか？', body: '書き直した内容は消えます。', ok: '元に戻す',
+        run: function () {
+          return api('save_recruit', { text: '' }).then(function (st) {
+            S.state = st; ta.value = saved = st.recruitText;
+            sync(); showReset(); setStatus('元の文面に戻しました');
+          });
+        }
+      });
+    });
+    S.flushEdit = save;
+    showReset();
   }
 
   /** 募集の取り消し（抽選の前だけ）。取り消した内容を募集フォームに入れておき、直して募集し直せるようにする */
@@ -715,15 +781,28 @@
     });
   }
 
-  function shareBox(title, lead, text, label) {
+  /** 文面とLINEで送るボタンのダイアログ。editable のときは募集の文面をその場で書き直せる */
+  function shareBox(title, lead, text, label, editable) {
     var m = modal(
       '<h3 class="maru">' + esc(title) + '</h3><p>' + esc(lead) + '</p>' +
-      '<pre class="text">' + esc(text) + '</pre>' +
-      '<a class="btn line" href="' + esc(lineUrl(text)) + '" target="_blank" rel="noopener">' + ICON.line + esc(label) + '</a>' +
-      '<div class="btn-row" style="grid-template-columns:1fr 1fr"><button class="btn ghost small" id="m-copy">' + ICON.copy + 'コピー</button>' +
+      (editable ? recruitEditorHtml(text) : '<pre class="text">' + esc(text) + '</pre>') +
+      '<a class="btn line" data-line href="' + esc(lineUrl(text)) + '" target="_blank" rel="noopener">' + ICON.line + esc(label) + '</a>' +
+      '<div class="btn-row" style="grid-template-columns:1fr 1fr"><button class="btn ghost small" data-copy id="m-copy">' + ICON.copy + 'コピー</button>' +
       '<button class="btn ghost small" id="m-close">閉じる</button></div>');
-    m.querySelector('#m-copy').addEventListener('click', function () { copy(text); });
-    m.querySelector('#m-close').addEventListener('click', function () { m.remove(); });
+    var close = function () {
+      Promise.resolve(editable && S.flushEdit ? S.flushEdit() : null).then(function () {
+        m.remove();
+        if (editable) render();   // 書き直した文面を募集中の画面にも出す
+      });
+    };
+    if (editable) {
+      bindRecruitEditor(m);
+      m.addEventListener('click', function (e) {   // 外側を押して閉じたときも保存して画面に出す
+        if (e.target === m && S.flushEdit) S.flushEdit().then(render);
+      });
+    }
+    else m.querySelector('#m-copy').addEventListener('click', function () { copy(text); });
+    m.querySelector('#m-close').addEventListener('click', close);
   }
 
   function footer() {
@@ -744,10 +823,12 @@
 
   $reload.addEventListener('click', function () {
     if (S.view === 'history') { S.history = null; S.error = ''; render(); return; }
-    if (S.view !== 'roulette') load();
+    if (S.view !== 'roulette') Promise.resolve(S.flushEdit ? S.flushEdit() : null).then(load);
   });
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible' && S.view !== 'roulette' && S.view !== 'new' && !document.querySelector('.modal')) load();
+    if (document.visibilityState === 'hidden') { if (S.flushEdit) S.flushEdit(); return; }   // LINEへ切り替えるときに書き直しを保存
+    var a = document.activeElement;
+    if (S.view !== 'roulette' && S.view !== 'new' && !document.querySelector('.modal') && !(a && a.classList && a.classList.contains('recruit-ed'))) load();
   });
   load();
 })();

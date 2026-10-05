@@ -151,3 +151,9 @@ details.month .m-body { padding: 12px 16px 6px; }
 details.month .member { padding: 8px 0; }
 details.month .avatar { width: 36px; height: 36px; font-size: 14px; }
 details.month .nm { font-size: 16px; }
+
+/* 募集の文面の書き直し */
+textarea.recruit-ed { min-height: 320px; font-size: 15px; line-height: 1.65; margin-top: 10px; }
+.ed-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.ed-status { font-size: 13px; color: var(--sub); }
+.modal textarea.recruit-ed { min-height: 220px; max-height: 45vh; }
