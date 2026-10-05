@@ -1,5 +1,5 @@
 // 社長めし 応募ページ（スタッフ用）
-// 名前を選んで応募する／取り消す。いまの応募人数も見える。合言葉はいらない。
+// 名前を入力して応募する／取り消す。いまの応募人数も見える。合言葉はいらない。
 (function () {
   'use strict';
 
@@ -95,10 +95,12 @@
     });
   }
 
-  function load() {
+  /** keepError：応募に失敗したあとの読み直しでは、エラーの文を消さずに残す */
+  function load(keepError) {
     $reload.classList.add('spin');
     return api('pub_round', { name: store('sm_name') || '', token: deviceToken() }).then(function (st) {
-      S.st = st; S.error = '';
+      S.st = st;
+      if (keepError !== true) S.error = '';
       render();
     }, function (e) {
       S.error = e.message;
@@ -123,7 +125,7 @@
     var st = S.st;
     if (!st) {
       $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div>';
-      on('#retry', load);
+      on('#retry', function () { load(); });
       return;
     }
     if (st.stage === 'none') {
@@ -206,25 +208,15 @@
     var st = S.st;
     var editing = !!(mine && S.editing);
     var current = editing ? mine.name : (store('sm_name') || '');
-    var bases = [];
-    st.names.forEach(function (n) { if (bases.indexOf(n.base) < 0) bases.push(n.base); });
-    var options = bases.map(function (b) {
-      var inner = st.names.filter(function (n) { return n.base === b; }).map(function (n) {
-        return '<option value="' + esc(n.name) + '"' + (n.name === current ? ' selected' : '') + '>' + esc(n.name) + '</option>';
-      }).join('');
-      return b ? '<optgroup label="' + esc(b) + '">' + inner + '</optgroup>' : inner;
-    }).join('');
-    var known = st.names.some(function (n) { return n.name === current; });
-    var cycleNote = st.cycle && !st.wrap
-      ? '<p class="hint">一度当選した方は、全員に順番が回るまでお休みです（名前が出ません）。</p>' : '';
+    var ruleNote = st.cycle ? '<p class="hint">一度当選したことがある方は応募できません。</p>' : '';
 
     $app.innerHTML = errBox() + head +
       '<div class="card">' +
       '<h3 class="maru" style="margin:0 0 4px;font-size:19px">' + (editing ? '書き直す' : '応募する') + '</h3>' +
       (editing
         ? '<p class="muted" style="margin:0">' + esc(mine.name) + 'さん</p>'
-        : '<label class="f" for="f-name">お名前</label>' +
-          '<select id="f-name"><option value=""' + (known ? '' : ' selected') + '>選んでください</option>' + options + '</select>' + cycleNote) +
+        : '<label class="f" for="f-name">お名前（フルネーム）</label>' +
+          '<input type="text" id="f-name" value="' + esc(current) + '" placeholder="山田 花子" autocomplete="name" maxlength="30">' + ruleNote) +
       '<label class="f" for="f-ask">社長に聞いてみたいこと<span class="opt">なくてもOK</span></label>' +
       '<textarea id="f-ask" maxlength="200" placeholder="話してみたい話題があれば">' + esc(editing ? mine.ask : '') + '</textarea>' +
       '<div class="counter" id="cnt"></div>' +
@@ -238,8 +230,8 @@
     count();
     on('#back', function () { S.editing = false; S.error = ''; render(); });
     on('#apply', function () {
-      var name = editing ? mine.name : $('#f-name').value;
-      if (!name) { S.error = 'お名前を選んでください'; render(); window.scrollTo(0, 0); return; }
+      var name = editing ? mine.name : $('#f-name').value.trim();
+      if (!name) { S.error = 'お名前を入力してください'; render(); window.scrollTo(0, 0); return; }
       var btn = $('#apply');
       btn.disabled = true; btn.textContent = '送信しています…';
       api('pub_apply', { name: name, ask: ask.value, token: deviceToken() }).then(function (st2) {
@@ -250,8 +242,8 @@
         if (editing) toast('書き直しました');
       }, function (e) {
         S.error = e.message;
-        if (e.code === 'taken') store('sm_name', name);
-        load();
+        store('sm_name', name);   // 入れた名前は消さずに残す
+        load(true);
         window.scrollTo(0, 0);
       });
     });
@@ -301,7 +293,7 @@
 
   $reload.addEventListener('click', function () { if (!document.querySelector('.modal')) load(); });
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible' && !S.editing && !document.querySelector('.modal') && !(document.activeElement && /SELECT|TEXTAREA/.test(document.activeElement.tagName))) load();
+    if (document.visibilityState === 'visible' && !S.editing && !document.querySelector('.modal') && !(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) load();
   });
   load();
 })();
