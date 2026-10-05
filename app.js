@@ -114,20 +114,43 @@
       if (res.ok) return res.data;
       var err = new Error(res.error || 'エラーが起きました');
       err.code = res.code;
-      if (res.code === 'auth') { store('sm_key', null); S.state = null; }
+      if (res.code === 'auth') { store('sm_key', null); store('sm_state_cache', null); S.state = null; }
       throw err;
     });
+  }
+
+  // 前に見た内容をこの端末に覚えておき、次に開いたときはすぐ出す（受付の返事は数秒〜十数秒かかることがあるため）
+  var STATE_CACHE = 'sm_state_cache';
+  function readStateCache() {
+    try {
+      var c = JSON.parse(store(STATE_CACHE) || 'null');
+      if (c && c.at && Date.now() - c.at < 7 * 86400000) return c.st;
+    } catch (e) { /* 読めなければ使わない */ }
+    return null;
+  }
+  function writeStateCache(st) {
+    try { store(STATE_CACHE, JSON.stringify({ at: Date.now(), st: st })); } catch (e) { /* 何もしない */ }
+  }
+  /** 入力中・ダイアログ表示中・ルーレット中は描き直さない（新しい内容は次に描くときに使う） */
+  function safeToRender() {
+    var a = document.activeElement;
+    return S.view !== 'roulette' && !document.querySelector('.modal') && !(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName));
   }
 
   function load() {
     if (!store('sm_key')) { render(); return; }
     $reload.classList.add('spin');
+    if (!S.state) {
+      var cached = readStateCache();
+      if (cached) { S.state = cached; render(); }
+    }
     return api('state').then(function (st) {
       S.state = st; S.error = '';
-      render();
+      writeStateCache(st);
+      if (safeToRender()) render();
     }, function (e) {
       S.error = e.message;
-      render();
+      if (safeToRender()) render();
     }).then(function () { $reload.classList.remove('spin'); });
   }
 
@@ -143,7 +166,7 @@
     if (S.view === 'roulette') return renderRoulette();
     if (S.view === 'history') return renderHistory();
     if (!st) {
-      $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div>';
+      $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div><p class="muted center">読み込み中…（数秒かかることがあります）</p>';
       on('#retry', load);
       return;
     }
@@ -857,7 +880,7 @@
     on('#logout', function () {
       confirmBox({
         title: 'この端末の合言葉を消しますか？', body: '次に開いたとき、もう一度合言葉を入れることになります。', ok: '消す',
-        run: function () { store('sm_key', null); S.state = null; S.view = ''; render(); }
+        run: function () { store('sm_key', null); store('sm_state_cache', null); S.state = null; S.view = ''; render(); }
       });
     });
   }
