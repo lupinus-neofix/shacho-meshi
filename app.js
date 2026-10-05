@@ -487,9 +487,9 @@
   function spinTo(canvas, segs, pick, done) {
     var seg = segs.filter(function (s) { return s.name === pick; })[0] || segs[0];
     var target = seg.start + (seg.end - seg.start) * (0.2 + Math.random() * 0.6);
-    var turns = 6 + Math.floor(Math.random() * 2);
+    var turns = 3 + Math.floor(Math.random() * 2);   // 3秒で回るので回転数も減らし、回り始めの速さを前と同じくらいにする
     var final = turns * 360 + (360 - target);
-    var dur = 5600, t0 = null, lastIdx = -1;
+    var dur = 3000, t0 = null, lastIdx = -1;   // 回る時間（ミリ秒）
     var pointer = document.getElementById('pointer');
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) dur = 1200;
