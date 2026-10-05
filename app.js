@@ -294,13 +294,13 @@
       '<div class="card hero">' +
       '<span class="pill">募集中</span>' +
       '<div class="count"><div class="num">' + st.applicants + '<small>名</small></div><div class="cap">いまの応募・' + esc(left) + '</div></div>' +
+      seeEntriesButton(st) +
       '</div>' +
       '<div class="card">' + infoRows(st.round) + '</div>' +
       shareButtons(st.recruitText, '募集をLINEで送る') +
       '<details' + (st.recruitEdited ? ' open' : '') + '><summary>募集の文面を見る・書き直す' +
       (st.recruitEdited ? ' <span class="pill gold">書き直し済み</span>' : '') + '</summary>' +
       recruitEditorHtml(st.recruitText) + '</details>' +
-      entriesCard(st.entries || [], '応募した人と社長に聞いてみたいこと') +
       '<a class="link" href="apply/" target="_blank" rel="noopener">スタッフの応募ページを見る</a>' +
       '<button class="link" id="early">締切前だけど、もう抽選する</button>' +
       '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
@@ -308,6 +308,7 @@
     bindRecruitEditor($app);
     bindFooter();
     bindCancelRound();
+    on('#see-entries', openEntriesSheet);
     on('#early', function () {
       confirmBox({
         title: '締切前ですが抽選しますか？',
@@ -328,17 +329,18 @@
       '<div class="card hero">' +
       '<span class="pill gold">締切になりました</span>' +
       '<div class="count"><div class="num">' + st.applicants + '<small>名</small></div><div class="cap">の応募がありました</div></div>' +
+      seeEntriesButton(st) +
       (none
         ? '<div class="note">応募がありませんでした。締切を延ばすときは部長に連絡してください。</div>'
         : '<p class="muted" style="margin:8px 0 0">ルーレットで' + Math.min(st.winnersCount, st.applicants) + '名を決めましょう！</p>' +
           '<button class="btn gold maru" id="draw" style="font-size:20px;min-height:64px">' + ICON.spin + '抽選をはじめる</button>') +
       '</div>' +
       '<div class="card">' + infoRows(st.round) + '</div>' +
-      entriesCard(st.entries || [], '応募した人と社長に聞いてみたいこと') +
       '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
       footer();
     bindFooter();
     bindCancelRound();
+    on('#see-entries', openEntriesSheet);
     on('#draw', function () {
       var b = $('#draw');
       b.disabled = true; b.textContent = '準備しています…';
@@ -718,9 +720,22 @@
     }).join('');
   }
 
-  function entriesCard(list, title) {
-    return '<div class="card"><p class="subhead">' + esc(title) + '（' + list.length + '名）</p>' +
-      (list.length ? entryRows(list) : '<p class="muted" style="margin:4px 0 0">まだ応募はありません</p>') + '</div>';
+  /** 人数の下の「応募した人を見る」ボタン（応募が0人のときは出さない） */
+  function seeEntriesButton(st) {
+    if (!st.entries || !st.entries.length) return '';
+    return '<button class="see-btn" id="see-entries">応募した人を見る' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>';
+  }
+
+  /** 応募した人と「社長に聞いてみたいこと」を、下から出るシートで見せる */
+  function openEntriesSheet() {
+    var list = (S.state && S.state.entries) || [];
+    var m = modal(
+      '<h3 class="maru">応募した人（' + list.length + '名）</h3>' +
+      '<p>応募した順です。社長に聞いてみたいことも見られます。</p>' +
+      '<div class="sheet-list">' + entryRows(list) + '</div>' +
+      '<button class="btn ghost small" id="m-close">閉じる</button>');
+    m.querySelector('#m-close').addEventListener('click', function () { m.remove(); });
   }
 
   // ───────── これまでの社長めし ─────────
