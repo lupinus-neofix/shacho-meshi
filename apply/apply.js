@@ -1,5 +1,5 @@
 // 社長めし 応募ページ（スタッフ用）
-// 名前を入力して応募する／取り消す。いまの応募人数も見える。合言葉はいらない。
+// 名前を入力して応募する／取り消す。応募人数は見せない。合言葉はいらない。
 (function () {
   'use strict';
 
@@ -155,8 +155,7 @@
       (st.stage === 'open' ? '<span class="pill">募集中</span>' : '<span class="pill gold">締切ました</span>') +
       '<div class="eyebrow" style="margin-top:8px">今月の社長めし</div>' +
       '<h2 class="maru">' + esc(st.round.shop) + '</h2>' +
-      '<div class="count"><div class="num">' + st.applicants + '<small>名</small></div>' +
-      '<div class="cap">いまの応募（定員' + st.winnersCount + '名・抽選）</div></div>' +
+      '<div class="muted" style="margin-top:2px">定員' + st.winnersCount + '名（抽選）</div>' +
       '</div>' +
       '<div class="card">' + infoRows(st.round) + '</div>';
 
