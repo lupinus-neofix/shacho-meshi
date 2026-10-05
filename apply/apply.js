@@ -113,15 +113,17 @@
     $reload.classList.add('spin');
     if (!S.st) {
       var cached = readCache();
-      if (cached) { S.st = cached; render(); }
+      if (cached) S.st = cached;
+      if (!document.getElementById('f-name')) render();   // 前の内容があればそれを、なければ入力欄だけ先に出す
     }
     return api('pub_round', { name: store('sm_name') || '', token: deviceToken() }).then(function (st) {
-      S.st = st;
+      S.st = st; S.loadFailed = false;
       writeCache(st);
       if (keepError !== true) S.error = '';
       renderKeepingInput();
     }, function (e) {
       S.error = e.message;
+      if (!S.st) S.loadFailed = true;
       renderKeepingInput();
     }).then(function () { $reload.classList.remove('spin'); });
   }
@@ -152,9 +154,12 @@
   function render() {
     var st = S.st;
     if (!st) {
-      $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div><p class="muted center">読み込み中…（数秒かかることがあります）</p>';
-      on('#retry', function () { load(); });
-      return;
+      if (S.loadFailed) {
+        $app.innerHTML = errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>';
+        on('#retry', function () { S.loadFailed = false; S.error = ''; render(); load(); });
+        return;
+      }
+      return renderShell();
     }
     if (st.stage === 'none') {
       $app.innerHTML = errBox() +
@@ -195,6 +200,21 @@
     var mine = st.mine && st.mine.status === '応募' ? st.mine : null;
     if (mine && !S.editing) return renderApplied(head, mine);
     renderForm(head, mine);
+  }
+
+  /**
+   * 初めて開いたとき：受付の返事（数秒〜十数秒）を待たずに入力欄を出す。
+   * お店の情報は届きしだい差し替える（入力途中の文字は消さない）。
+   */
+  function renderShell() {
+    var head =
+      '<div class="card hero">' +
+      '<span class="pill gray">読み込み中</span>' +
+      '<div class="eyebrow" style="margin-top:8px">今月の社長めし</div>' +
+      '<div class="skel" style="width:55%;height:28px;margin:8px auto 10px"></div>' +
+      '<p class="muted" style="margin:0">お店と日時を読み込んでいます。<br>先に名前を入れておけます（数秒〜十数秒かかることがあります）</p>' +
+      '</div>';
+    renderForm(head, null);
   }
 
   function renderApplied(head, mine) {
@@ -242,7 +262,7 @@
     var st = S.st;
     var editing = !!(mine && S.editing);
     var current = editing ? mine.name : (store('sm_name') || '');
-    var ruleNote = st.cycle ? '<p class="hint">一度当選したことがある方は応募できません。</p>' : '';
+    var ruleNote = st && st.cycle ? '<p class="hint">一度当選したことがある方は応募できません。</p>' : '';
 
     $app.innerHTML = errBox() + head +
       '<div class="card">' +
@@ -265,16 +285,26 @@
     on('#back', function () { S.editing = false; S.error = ''; render(); });
     on('#apply', function () {
       var name = editing ? mine.name : $('#f-name').value.trim();
-      if (!name) { S.error = 'お名前を入力してください'; render(); window.scrollTo(0, 0); return; }
+      if (!name) { S.error = 'お名前を入力してください'; renderKeepingInput(); window.scrollTo(0, 0); return; }
       var btn = $('#apply');
       btn.disabled = true; btn.textContent = '送信しています…';
+      // 返事が遅いときは、押し直さなくてよいことを伝える
+      var slow = setTimeout(function () {
+        if (!btn.isConnected) return;
+        var p = document.createElement('p');
+        p.className = 'hint center';
+        p.textContent = '少し時間がかかっています。このままお待ちください（押し直さなくて大丈夫です）';
+        btn.insertAdjacentElement('afterend', p);
+      }, 2500);
       api('pub_apply', { name: name, ask: ask.value, token: deviceToken() }).then(function (st2) {
+        clearTimeout(slow);
         store('sm_name', name);
         S.st = st2; S.error = ''; S.just = !editing; S.editing = false;
         window.scrollTo(0, 0);
         render();
         if (editing) toast('書き直しました');
       }, function (e) {
+        clearTimeout(slow);
         S.error = e.message;
         store('sm_name', name);   // 入れた名前は消さずに残す
         load(true);
@@ -298,7 +328,7 @@
     m.querySelector('#m-cancel').addEventListener('click', function () { m.remove(); });
     var ok = m.querySelector('#m-ok');
     ok.addEventListener('click', function () {
-      ok.disabled = true; ok.textContent = '送信しています…';
+      ok.disabled = true; ok.textContent = '送信しています…（少しお待ちください）';
       Promise.resolve(o.run()).then(function () { m.remove(); }, function (e) {
         var box = m.querySelector('#m-err');
         box.hidden = false; box.textContent = e.message;
