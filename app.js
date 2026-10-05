@@ -300,9 +300,11 @@
       '<details><summary>募集の文面を見る</summary><pre class="text">' + esc(st.recruitText) + '</pre></details>' +
       '<a class="link" href="apply/" target="_blank" rel="noopener">スタッフの応募ページを見る</a>' +
       '<button class="link" id="early">締切前だけど、もう抽選する</button>' +
+      '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
       footer();
     bindCopy(st.recruitText);
     bindFooter();
+    bindCancelRound();
     on('#early', function () {
       confirmBox({
         title: '締切前ですが抽選しますか？',
@@ -328,12 +330,40 @@
         : '<p class="muted" style="margin:8px 0 0">ルーレットで' + Math.min(st.winnersCount, st.applicants) + '名を決めましょう！</p>' +
           '<button class="btn gold maru" id="draw" style="font-size:20px;min-height:64px">' + ICON.spin + '抽選をはじめる</button>') +
       '</div>' +
-      '<div class="card">' + infoRows(st.round) + '</div>' + footer();
+      '<div class="card">' + infoRows(st.round) + '</div>' +
+      '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
+      footer();
     bindFooter();
+    bindCancelRound();
     on('#draw', function () {
       var b = $('#draw');
       b.disabled = true; b.textContent = '準備しています…';
       startDraw(false).catch(function (e) { S.error = e.message; render(); });
+    });
+  }
+
+  /** 募集の取り消し（抽選の前だけ）。取り消した内容を募集フォームに入れておき、直して募集し直せるようにする */
+  function bindCancelRound() {
+    on('#cancel-round', function () {
+      var st = S.state;
+      confirmBox({
+        title: 'この募集を取り消しますか？',
+        body: st.round.date + '〜 ' + st.round.shop + '\n\n' +
+          (st.applicants ? 'いま応募している' + st.applicants + '名の応募も無効になります。\n' : '') +
+          '取り消すと元に戻せません。内容を直して募集し直すことはできます。',
+        ok: '取り消す',
+        danger: true,
+        run: function () {
+          return api('cancel_round').then(function (st2) {
+            var c = st2.canceled;
+            S.state = st2; S.error = ''; S.view = 'new';
+            S.draft = { date: c.raw.date, time: c.raw.time || '19:00', shop: c.shop, genre: c.genre || '', url: c.url || '', deadline: c.raw.deadline, deadlineTouched: true };
+            window.scrollTo(0, 0);
+            render();
+            toast('取り消しました。直して募集し直せます');
+          });
+        }
+      });
     });
   }
 
