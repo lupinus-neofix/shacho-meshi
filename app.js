@@ -296,6 +296,7 @@
       '<div class="card">' + infoRows(st.round) + '</div>' +
       shareButtons(st.recruitText, '募集をLINEで送る') +
       '<details><summary>募集の文面を見る</summary><pre class="text">' + esc(st.recruitText) + '</pre></details>' +
+      '<a class="link" href="apply/" target="_blank" rel="noopener">スタッフの応募ページを見る</a>' +
       '<button class="link" id="early">締切前だけど、もう抽選する</button>' +
       footer();
     bindCopy(st.recruitText);
