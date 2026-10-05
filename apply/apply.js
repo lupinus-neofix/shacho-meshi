@@ -95,17 +95,45 @@
     });
   }
 
+  // 前に見た内容をこの端末に覚えておき、次に開いたときはすぐ出す（受付の返事は数秒〜十数秒かかることがあるため）
+  var CACHE_KEY = 'sm_pub_cache';
+  function readCache() {
+    try {
+      var c = JSON.parse(store(CACHE_KEY) || 'null');
+      if (c && c.at && Date.now() - c.at < 7 * 86400000) return c.st;
+    } catch (e) { /* 読めなければ使わない */ }
+    return null;
+  }
+  function writeCache(st) {
+    try { store(CACHE_KEY, JSON.stringify({ at: Date.now(), st: st })); } catch (e) { /* 何もしない */ }
+  }
+
   /** keepError：応募に失敗したあとの読み直しでは、エラーの文を消さずに残す */
   function load(keepError) {
     $reload.classList.add('spin');
+    if (!S.st) {
+      var cached = readCache();
+      if (cached) { S.st = cached; render(); }
+    }
     return api('pub_round', { name: store('sm_name') || '', token: deviceToken() }).then(function (st) {
       S.st = st;
+      writeCache(st);
       if (keepError !== true) S.error = '';
-      render();
+      renderKeepingInput();
     }, function (e) {
       S.error = e.message;
-      render();
+      renderKeepingInput();
     }).then(function () { $reload.classList.remove('spin'); });
+  }
+
+  /** 新しい内容で描き直しても、入力途中の名前・聞いてみたいことは消さない */
+  function renderKeepingInput() {
+    var keep = {};
+    ['f-name', 'f-ask'].forEach(function (id) { var el = document.getElementById(id); if (el && el.value) keep[id] = el.value; });
+    var focused = document.activeElement && document.activeElement.id;
+    render();
+    Object.keys(keep).forEach(function (id) { var el = document.getElementById(id); if (el) el.value = keep[id]; });
+    if (focused && document.getElementById(focused)) document.getElementById(focused).focus();
   }
 
   // ───────── 画面 ─────────
@@ -124,7 +152,7 @@
   function render() {
     var st = S.st;
     if (!st) {
-      $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div>';
+      $app.innerHTML = S.error ? errBox() + '<button class="btn ghost" id="retry">もう一度読み込む</button>' : '<div class="spinner"></div><p class="muted center">読み込み中…（数秒かかることがあります）</p>';
       on('#retry', function () { load(); });
       return;
     }
