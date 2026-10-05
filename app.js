@@ -300,6 +300,7 @@
       '<details' + (st.recruitEdited ? ' open' : '') + '><summary>募集の文面を見る・書き直す' +
       (st.recruitEdited ? ' <span class="pill gold">書き直し済み</span>' : '') + '</summary>' +
       recruitEditorHtml(st.recruitText) + '</details>' +
+      entriesCard(st.entries || [], '応募した人と社長に聞いてみたいこと') +
       '<a class="link" href="apply/" target="_blank" rel="noopener">スタッフの応募ページを見る</a>' +
       '<button class="link" id="early">締切前だけど、もう抽選する</button>' +
       '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
@@ -333,6 +334,7 @@
           '<button class="btn gold maru" id="draw" style="font-size:20px;min-height:64px">' + ICON.spin + '抽選をはじめる</button>') +
       '</div>' +
       '<div class="card">' + infoRows(st.round) + '</div>' +
+      entriesCard(st.entries || [], '応募した人と社長に聞いてみたいこと') +
       '<button class="link" id="cancel-round" style="color:var(--danger)">この募集を取り消す</button>' +
       footer();
     bindFooter();
@@ -639,7 +641,8 @@
       var tag = out ? '<span class="pill gray">辞退</span>' : w.kind === '当選（繰上）' ? '<span class="pill gold">繰り上げ</span>' : '';
       return '<div class="member' + (out ? ' out' : '') + '">' +
         '<div class="avatar maru">' + esc(initial(w.name)) + '</div>' +
-        '<div class="who"><div class="nm">' + esc(w.name) + 'さん</div><div class="bs">' + esc(w.base || '') + ' ' + tag + '</div></div>' +
+        '<div class="who"><div class="nm">' + esc(w.name) + 'さん</div>' + (w.base || tag ? '<div class="bs">' + esc(w.base || '') + ' ' + tag + '</div>' : '') +
+        (w.ask && !out ? '<div class="ask">' + esc(w.ask) + '</div>' : '') + '</div>' +
         (out ? '' : '<button class="mini" data-decline="' + esc(w.name) + '">辞退</button>') +
         '</div>';
     }).join('');
@@ -658,6 +661,12 @@
       (alts.length ? '<p class="subhead" style="margin-top:14px">補欠</p><div class="muted">' +
         alts.map(function (a) { return esc(a.kind) + '：' + esc(a.name) + 'さん'; }).join('<br>') + '</div>' : '') +
       '</div>' +
+      (st.everyone && st.everyone.length
+        ? '<details class="month"><summary><span class="m-shop">応募した全員と聞いてみたいこと（' + st.everyone.length + '名）</span>' + CHEV + '</summary>' +
+          '<div class="m-body">' + entryRows(st.everyone.map(function (e) {
+            return { name: e.name, ask: e.ask, tag: e.kind.indexOf('当選') === 0 ? '当選' : e.kind.indexOf('補欠') === 0 ? e.kind : '' };
+          })) + '</div></details>'
+        : '') +
       shareButtons(st.announceText, '発表をLINEで送る') +
       '<details><summary>発表の文面を見る</summary><pre class="text">' + esc(st.announceText) + '</pre></details>' +
       (st.steps && st.steps.length ? '<button class="btn ghost" id="replay">' + ICON.spin + 'ルーレットをもう一度見る</button>' : '') +
@@ -696,6 +705,24 @@
     });
   }
 
+  // ───────── 応募した人と「社長に聞いてみたいこと」 ─────────
+
+  var CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+  function entryRows(list) {
+    return list.map(function (e) {
+      return '<div class="entry"><div class="nm">' + esc(e.name) + 'さん' +
+        (e.tag ? ' <span class="pill' + (e.tag === '当選' ? '' : ' gray') + '">' + esc(e.tag) + '</span>' : '') + '</div>' +
+        (e.ask ? '<div class="ask">' + esc(e.ask) + '</div>' : '<div class="ask none">聞いてみたいことは書いていません</div>') +
+        '</div>';
+    }).join('');
+  }
+
+  function entriesCard(list, title) {
+    return '<div class="card"><p class="subhead">' + esc(title) + '（' + list.length + '名）</p>' +
+      (list.length ? entryRows(list) : '<p class="muted" style="margin:4px 0 0">まだ応募はありません</p>') + '</div>';
+  }
+
   // ───────── これまでの社長めし ─────────
 
   function renderHistory() {
@@ -715,7 +742,8 @@
           var tag = m.promoted ? ' <span class="pill gold">繰り上げ</span>' : '';
           if (m.absent) tag += ' <span class="pill gray">欠席</span>';
           return '<div class="member"><div class="avatar maru">' + esc(initial(m.name)) + '</div>' +
-            '<div class="who"><div class="nm">' + esc(m.name) + 'さん' + tag + '</div></div></div>';
+            '<div class="who"><div class="nm">' + esc(m.name) + 'さん' + tag + '</div>' +
+            (m.ask ? '<div class="ask">' + esc(m.ask) + '</div>' : '') + '</div></div>';
         }).join('')
         : '<p class="muted" style="margin:6px 0 0">当選者はいません</p>';
       return '<details class="month"' + (i === 0 ? ' open' : '') + '>' +

@@ -157,3 +157,11 @@ textarea.recruit-ed { min-height: 320px; font-size: 15px; line-height: 1.65; mar
 .ed-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
 .ed-status { font-size: 13px; color: var(--sub); }
 .modal textarea.recruit-ed { min-height: 220px; max-height: 45vh; }
+
+/* 応募した人と「社長に聞いてみたいこと」 */
+.entry { padding: 10px 0; border-top: 1px solid var(--line); }
+.entry:first-of-type { border-top: 0; }
+.entry .nm { font-weight: 700; font-size: 16px; }
+.ask { font-size: 14px; line-height: 1.6; background: var(--bg); border-radius: 10px; padding: 8px 10px; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+.ask.none { background: none; padding: 0; color: var(--sub); font-size: 13px; }
+.card > .subhead + .entry { padding-top: 6px; }
