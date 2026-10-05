@@ -135,6 +135,13 @@
         '<p class="muted">次の募集はLINEグループでお知らせします。<br>お楽しみに！</p></div>';
       return;
     }
+    if (st.stage === 'canceled') {
+      $app.innerHTML = errBox() +
+        '<div class="card hero"><span class="pill gray">取り消し</span>' +
+        '<h2 class="maru">' + esc(st.round.shop) + '</h2>' +
+        '<p class="muted">今回の募集は取り消しになりました。<br>次の募集はLINEグループでお知らせします。</p></div>';
+      return;
+    }
     if (st.stage === 'drawn') {
       $app.innerHTML = errBox() +
         '<div class="card hero"><span class="pill">抽選が終わりました</span>' +
