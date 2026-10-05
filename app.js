@@ -221,9 +221,9 @@
       '<input type="time" id="f-time" value="' + esc(d.time) + '" step="900"></div>' +
       '<div class="hint" id="h-date">' + esc(jpDate(d.date)) + '</div>' +
       '<label class="f" for="f-shop">お店の名前</label>' +
-      '<input type="text" id="f-shop" value="' + esc(d.shop) + '" placeholder="炭火焼 さくら" autocomplete="off">' +
+      '<input type="text" id="f-shop" value="' + esc(d.shop) + '" autocomplete="off">' +
       '<label class="f" for="f-genre">ジャンル<span class="opt">なくてもOK</span></label>' +
-      '<input type="text" id="f-genre" value="' + esc(d.genre) + '" placeholder="焼き鳥" autocomplete="off">' +
+      '<input type="text" id="f-genre" value="' + esc(d.genre) + '" autocomplete="off">' +
       '<label class="f" for="f-url">お店のページ<span class="opt">なくてもOK</span></label>' +
       '<input type="url" id="f-url" value="' + esc(d.url) + '" placeholder="https://" autocomplete="off" inputmode="url">' +
       '<label class="f" for="f-deadline">応募の締切</label>' +
