@@ -225,6 +225,7 @@
         '<span class="pill">応募済み</span>' +
         '<div class="big maru">' + esc(mine.name) + 'さん</div>' +
         '<p class="muted" style="margin:0">' + (S.just ? '応募しました！ ' : '') + '締切後に抽選し、LINEグループで発表します。</p>' +
+        (mine.wonBefore ? '<div class="note" style="text-align:left">以前に当選しているので、まだ当選していない方が優先になります。人数が足りないときに選ばれます。</div>' : '') +
         (mine.ask ? '<div class="ask-box"><b>社長に聞いてみたいこと</b>' + esc(mine.ask) + '</div>' : '') +
         '<button class="btn ghost" id="edit">聞いてみたいことを書き直す</button>' +
         '<button class="btn danger-ghost" id="cancel">応募を取り消す</button>' +
@@ -262,7 +263,7 @@
     var st = S.st;
     var editing = !!(mine && S.editing);
     var current = editing ? mine.name : (store('sm_name') || '');
-    var ruleNote = st && st.cycle ? '<p class="hint">一度当選したことがある方は応募できません。</p>' : '';
+    var ruleNote = st && st.cycle ? '<p class="hint">まだ当選していない方を優先して抽選します（当選したことがある方も応募できます）。</p>' : '';
 
     $app.innerHTML = errBox() + head +
       '<div class="card">' +
