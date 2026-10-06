@@ -752,10 +752,14 @@
 
   /** 応募した人と「社長に聞いてみたいこと」を、下から出るシートで見せる */
   function openEntriesSheet() {
-    var list = (S.state && S.state.entries) || [];
+    var list = ((S.state && S.state.entries) || []).map(function (e) {
+      return { name: e.name, ask: e.ask, tag: e.wonBefore ? '当選したことあり' : '' };
+    });
+    var first = list.filter(function (e) { return !e.tag; }).length;
     var m = modal(
       '<h3 class="maru">応募した人（' + list.length + '名）</h3>' +
-      '<p>応募した順です。社長に聞いてみたいことも見られます。</p>' +
+      '<p>応募した順です。社長に聞いてみたいことも見られます。' +
+      (first < list.length ? '\n「当選したことあり」の人は、まだの人（' + first + '名）が定員に足りないときだけ選ばれます。' : '') + '</p>' +
       '<div class="sheet-list">' + entryRows(list) + '</div>' +
       '<button class="btn ghost small" id="m-close">閉じる</button>');
     m.querySelector('#m-close').addEventListener('click', function () { m.remove(); });
